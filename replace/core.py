@@ -10,6 +10,15 @@ import os
 from replace.filefilter import FileFilter
 from replace.utils import get_tmp_filepath
 import re
+import signal
+
+def exit_flush(func):
+    def wrap(self, *args, **kwargs):
+        signal.signal(signal.SIGINT, self.finished)
+        signal.signal(signal.SIGTERM, self.finished)
+        return func(self, *args, **kwargs)
+
+    return wrap
 
 def move_file(s_file, d_file):
     os.rename(s_file, d_file)
@@ -32,6 +41,7 @@ class FilesManager(object):
         self.target_string = target_string
         self.interactive = interactive # 是否交互式替换
 
+    @exit_flush
     def list_all_files(self):
         if os.path.isfile(self.target_path): # 如果目标是个文件，则直接返回
             yield self.target_path
@@ -89,4 +99,11 @@ class FilesManager(object):
                 del_file(_tmp_file)
             else:
                 break
+
+    def finished(self, sign_num, _):
+        self.flush_tmp()
+        print('\nbye~')
+        import sys
+        sys.exit()
+
 
